@@ -6,3 +6,16 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+serde = { version = "1.0.203", features = ["derive"] }
+serde_json = "1.0.100"
+chrono = "0.4.38"
+sha2 = "0.10.8"
+rand = "0.8.5"
+
+[lib]
+name = "l1_poc"
+path = "src/lib.rs"
+
+[[bin]]
+name = "l1_poc"
+path = "src/main.rs"
