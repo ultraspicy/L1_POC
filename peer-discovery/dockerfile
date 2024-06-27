@@ -1,0 +1,22 @@
+# Build stage
+FROM rust:latest as builder
+
+WORKDIR /usr/src/peer-discovery
+
+# Copy all files from the current directory to the container
+COPY . .
+
+# Build the project
+RUN cargo build --release
+
+#Final stage
+FROM ubuntu:latest
+
+# Install CA certificates to enable secure HTTPS connections
+RUN apt-get update && apt-get install -y ca-certificates
+
+# Copy the compiled binary from the builder stage
+COPY --from=builder /usr/src/peer-discovery/target/release/peer-discovery /usr/local/bin/peer-discovery
+
+# Set the default command to run the binary
+CMD ["peer-discovery"]
