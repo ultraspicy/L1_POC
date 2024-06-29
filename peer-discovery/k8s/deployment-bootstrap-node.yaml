@@ -20,8 +20,8 @@ spec:
         ports:
         - containerPort: 8080
         env:
-        - name: OWN_ADDRESS
-          value: "10.0.0.100:8080"  # Use the static ClusterIP and port of the Service
-        - name: BOOTSTRAP_NODE
-          value: "10.0.0.100:8080"  # Self-reference for the bootstrap node
+        - name: OWN_ADDRESS 
+          value: "10.96.0.12:8080"
+
+
 

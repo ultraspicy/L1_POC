@@ -1,6 +1,8 @@
 use std::net::UdpSocket;
 use std::error::Error;
 
+
+
 /// Retrieves the local IP address of the machine by creating a dummy UDP socket.
 ///
 /// # Returns
