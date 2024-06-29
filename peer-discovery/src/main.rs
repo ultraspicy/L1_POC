@@ -1,12 +1,9 @@
 mod utils;
 
-use std::collections::HashSet;
 use warp::Filter;
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
-use std::sync::Arc;
-use std::error::Error;
-use std::env;
+use tokio::{sync::RwLock, task};
+use std::{sync::Arc, error::Error, env, collections::HashSet};
 use kube::{Client, api::Api};
 use k8s_openapi::api::core::v1::Service;
 
@@ -120,14 +117,25 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let routes = add_peer.or(get_peers);
 
-    // server accessible on port 8080 through any IP address assigned to any network interface on the machine
-    warp::serve(routes).run(([0, 0, 0, 0], 8080)).await;
+    
+    // Run the Warp server in a separate task
+    let server = task::spawn(async move {
+        // server accessible on port 8080 through any IP address assigned to any network interface on the machine
+        warp::serve(routes).run(([0, 0, 0, 0], 8080)).await;
+        println!("server {:?} listening", cluster_ip)
+    });
+
+    // Wait for a short period to ensure the server has started
+    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
 
     if !is_self_bootstrap {
         // this is a hard-coded IP address for bootstrap. Any new peer will connect to, and be broadcasted by this node
         let bootstrap_address = "10.96.0.12".to_string(); 
         registry.add_peer(bootstrap_address.clone()).await;
     }
+
+    // awaiting the server task to ensure that the main function remains active and does not exit.
+    server.await?;
 
     Ok(())
 }
