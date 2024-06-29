@@ -7,7 +7,7 @@ use tokio::sync::RwLock;
 use std::sync::Arc;
 use std::error::Error;
 use std::env;
-use kube::{Client, api::{Api, ListParams}};
+use kube::{Client, api::Api};
 use k8s_openapi::api::core::v1::Service;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -75,9 +75,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let own_address = env::var("OWN_ADDRESS").ok();
     let mut is_self_bootstrap = false;
+
     match own_address {
         Some(address) => {
-            // This is a bootstrap node
+            // we set up a static IP for bootstrap node and 
+            // save it through env_var, in k8s deployment configuration
             println!("This is a bootstrap node with address: {}", address);
             is_self_bootstrap = true;
         },
@@ -86,8 +88,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         },
     }
 
-    let namespace = env::var("NAMESPACE").unwrap_or_else(|_| "default".to_string());
-    let service_name = env::var("SERVICE_NAME").unwrap_or_else(|_| "my-service".to_string());
+    let namespace = env::var("NAMESPACE").unwrap_or_else(|_| "namespace_undefined".to_string());
+    let service_name = env::var("SERVICE_NAME").unwrap_or_else(|_| "service_not_found".to_string());
     let cluster_ip = if is_running_inside_kubernetes() {
         let client = Client::try_default().await?;
         if let Some(ip) = get_cluster_ip(client, &namespace, &service_name).await {

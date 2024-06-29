@@ -1,8 +1,8 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: bootstrap-service
   namespace: bootstrap
+  name: bootstrap-service
 spec:
   selector:
     app: bootstrap
@@ -11,3 +11,4 @@ spec:
       port: 8080
       targetPort: 8080
   clusterIP: 10.96.0.12
+  type: ClusterIP
