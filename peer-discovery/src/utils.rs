@@ -1,7 +1,6 @@
 use std::net::UdpSocket;
 use std::error::Error;
-
-
+use std::env;
 
 /// Retrieves the local IP address of the machine by creating a dummy UDP socket.
 ///
@@ -20,4 +19,8 @@ pub fn get_local_ip() -> Result<String, Box<dyn Error>> {
         std::net::IpAddr::V4(ipv4) => Ok(ipv4.to_string()),
         std::net::IpAddr::V6(ipv6) => Ok(ipv6.to_string()),
     }
+}
+
+pub(crate) fn is_running_inside_kubernetes() -> bool {
+    env::var("KUBERNETES_SERVICE_HOST").is_ok()
 }

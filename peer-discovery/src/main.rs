@@ -1,71 +1,11 @@
 mod utils;
+mod peer;
 
 use warp::Filter;
-use serde::{Deserialize, Serialize};
-use tokio::{sync::RwLock, task};
-use std::{sync::Arc, error::Error, env, collections::HashSet};
+use tokio::task;
+use std::{error::Error, env};
 use kube::{Client, api::Api};
 use k8s_openapi::api::core::v1::Service;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct Peer {
-    address: String,
-}
-
-#[derive(Debug, Clone)]
-struct PeerRegistry {
-    address: String,
-    peers: Arc<RwLock<HashSet<String>>>,
-}
-
-impl PeerRegistry {
-    fn new(address: String) -> Self {
-        Self {
-            address: address,
-            peers: Arc::new(RwLock::new(HashSet::new())),
-        }
-    }
-
-    async fn add_peer(&self, peer: String) {
-        {
-            let mut peers = self.peers.write().await;
-        
-            if peers.insert(peer.clone()) {
-                println!("Peer added: {}", peer);
-            } else {
-                println!("Peer already exists: {}", peer);
-            }
-        } // we want to make sure that the broadcast_join happens after the write() finishes
-
-        self.broadcast_join().await;
-    }
-
-    async fn get_peers(&self) -> Vec<String> {
-        let peers = self.peers.read().await;
-        let peers_list = peers.iter().cloned().collect::<Vec<String>>();
-        println!("The own address is: {:?}. Current peers: {:?}", self.address, peers_list);
-        peers_list
-    }
-
-    async fn broadcast_join(&self) {
-        let peers = self.get_peers().await;
-        let mut all_peers = peers.into_iter().collect::<HashSet<_>>();
-        all_peers.insert(self.address.clone());
-
-        for peer in all_peers {
-            let client = reqwest::Client::new();
-            let response = client.post(&format!("http://{}/add_peer", peer)) //create an HTTP POST request.
-                .json(&Peer { address: self.address.clone() }) // serializes the given data into JSON format.
-                .send()
-                .await;
-
-            match response {
-                Ok(_) => println!("Successfully notified peer at {}", peer),
-                Err(err) => eprintln!("Failed to notify peer at {}: {:?}", peer, err),
-            }
-        }
-    }
-}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -87,7 +27,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let namespace = env::var("NAMESPACE").unwrap_or_else(|_| "namespace_undefined".to_string());
     let service_name = env::var("SERVICE_NAME").unwrap_or_else(|_| "service_not_found".to_string());
-    let cluster_ip = if is_running_inside_kubernetes() {
+    let cluster_ip = if utils::is_running_inside_kubernetes() {
         let client = Client::try_default().await?;
         if let Some(ip) = get_cluster_ip(client, &namespace, &service_name).await {
             ip
@@ -100,7 +40,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         "127.0.0.1".to_string()
     };
 
-    let registry = PeerRegistry::new(cluster_ip.clone());
+    let registry = peer::PeerRegistry::new(cluster_ip.clone());
     let registry_for_warp = registry.clone();
     
     let registry_filter = warp::any().map(move || registry_for_warp.clone());
@@ -140,12 +80,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-async fn handle_add_peer(peer: Peer, registry: PeerRegistry) -> Result<impl warp::Reply, warp::Rejection> {
+async fn handle_add_peer(peer: peer::Peer, registry: peer::PeerRegistry) -> Result<impl warp::Reply, warp::Rejection> {
     registry.add_peer(peer.address).await;
     Ok(warp::reply::json(&"Peer added"))
 }
 
-async fn handle_get_peers(registry: PeerRegistry) -> Result<impl warp::Reply, warp::Rejection> {
+async fn handle_get_peers(registry: peer::PeerRegistry) -> Result<impl warp::Reply, warp::Rejection> {
     let peers = registry.get_peers().await;
     Ok(warp::reply::json(&peers))
 }
@@ -162,8 +102,4 @@ async fn get_cluster_ip(client: Client, namespace: &str, service_name: &str) -> 
             None
         }
     }
-}
-
-fn is_running_inside_kubernetes() -> bool {
-    env::var("KUBERNETES_SERVICE_HOST").is_ok()
 }
