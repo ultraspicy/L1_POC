@@ -1,6 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  namespace: bootstrap
   name: bootstrap-deployment
   labels:
     app: bootstrap
@@ -22,6 +23,12 @@ spec:
         env:
         - name: OWN_ADDRESS 
           value: "10.96.0.12:8080"
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: SERVICE_NAME
+          value: "bootstrap-service"
 
 
 
