@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: peer-deployment
+  labels:
+    app: peer
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: peer
+  template:
+    metadata:
+      labels:
+        app: peer
+    spec:
+      containers:
+      - name: peer-container
+        image: ultraspicy/peer-discovery:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: BOOTSTRAP_NODE
+          value: "bootstrap-service:8080"  # Use the service name for discovery. This only works under context of docker/k8s

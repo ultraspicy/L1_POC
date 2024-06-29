@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bootstrap-deployment
+  labels:
+    app: bootstrap
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bootstrap
+  template:
+    metadata:
+      labels:
+        app: bootstrap
+    spec:
+      containers:
+      - name: bootstrap-container
+        image: ultraspicy/peer-discovery:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: OWN_ADDRESS
+          value: "10.0.0.100:8080"  # Use the static ClusterIP and port of the Service
+        - name: BOOTSTRAP_NODE
+          value: "10.0.0.100:8080"  # Self-reference for the bootstrap node
+
